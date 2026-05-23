@@ -1,0 +1,228 @@
+name: Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to update, for example v3.15.0"
+        required: true
+        default: "v3.15.0"
+  push:
+    tags:
+      - "build/windows-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  windows-release:
+    name: Build Windows release assets
+    runs-on: windows-2022
+
+    steps:
+      - name: Resolve release tag
+        shell: pwsh
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseTag = $env:INPUT_RELEASE_TAG
+          if ([string]::IsNullOrWhiteSpace($releaseTag)) {
+            $refName = $env:GITHUB_REF_NAME
+            if ($refName.StartsWith('build/windows-')) {
+              $releaseTag = $refName.Substring('build/windows-'.Length)
+            } else {
+              $releaseTag = $refName
+            }
+          }
+          if (-not $releaseTag.StartsWith('v')) {
+            $releaseTag = "v$releaseTag"
+          }
+          $appVersion = $releaseTag.Substring(1)
+          "RELEASE_TAG=$releaseTag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Updating release $releaseTag with Windows assets for app version $appVersion"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.3
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare Tauri signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY is missing" >&2
+            exit 1
+          fi
+
+          RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+          RAW=$(RAW="$RAW" node -e "process.stdout.write((process.env.RAW || '').replace(/^\uFEFF/, '').replace(/\r/g, ''))")
+          KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
+
+          if echo "$RAW" | head -n1 | grep -q '^untrusted comment:'; then
+            printf '%s\n' "$RAW" > "$KEY_PATH"
+          elif DECODED=$(printf '%s' "$RAW" | (base64 --decode 2>/dev/null || base64 -D 2>/dev/null)) \
+            && echo "$DECODED" | head -n1 | grep -q '^untrusted comment:'; then
+            printf '%s\n' "$DECODED" > "$KEY_PATH"
+          elif echo "$RAW" | grep -Eq '^[A-Za-z0-9+/=]+$'; then
+            ONE=$(printf '%s' "$RAW" | tr -d '\r\n')
+            printf '%s\n%s\n' "untrusted comment: tauri signing key" "$ONE" > "$KEY_PATH"
+          else
+            echo "TAURI_SIGNING_PRIVATE_KEY format is not recognized" >&2
+            exit 1
+          fi
+
+          KEY_B64=$(KEY_PATH="$KEY_PATH" node -e "process.stdout.write(require('fs').readFileSync(process.env.KEY_PATH).toString('base64'))")
+          if [ -z "$KEY_B64" ]; then
+            echo "Failed to encode Tauri signing key" >&2
+            exit 1
+          fi
+          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
+
+          if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
+            RAW_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+            PASSWORD=$(RAW_PASSWORD="$RAW_PASSWORD" node -e "process.stdout.write((process.env.RAW_PASSWORD || '').replace(/^\uFEFF/, '').replace(/[\r\n]+$/g, ''))")
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Tauri App
+        run: pnpm tauri build
+
+      - name: Prepare Windows assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+
+          $msi = Get-ChildItem -Path 'src-tauri/target/release/bundle/msi' -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($null -eq $msi) {
+            $msi = Get-ChildItem -Path 'src-tauri/target/release/bundle' -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if ($null -eq $msi) {
+            throw 'No Windows MSI installer found'
+          }
+
+          $msiDest = "FHSwitch-$env:RELEASE_TAG-Windows.msi"
+          Copy-Item $msi.FullName (Join-Path release-assets $msiDest)
+          $sigPath = "$($msi.FullName).sig"
+          if (-not (Test-Path $sigPath)) {
+            throw "Signature not found for $($msi.Name)"
+          }
+          Copy-Item $sigPath (Join-Path release-assets "$msiDest.sig")
+
+          $exeCandidates = @(
+            'src-tauri/target/release/fhswitch.exe',
+            'src-tauri/target/x86_64-pc-windows-msvc/release/fhswitch.exe'
+          )
+          $exePath = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($null -eq $exePath) {
+            throw 'Portable exe not found'
+          }
+
+          $portableDir = 'release-assets/FHSwitch-Portable'
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+          Copy-Item $exePath $portableDir
+          @(
+            '# FH Switch portable build marker',
+            'portable=true'
+          ) | Set-Content -Path (Join-Path $portableDir 'portable.ini') -Encoding UTF8
+          Compress-Archive -Path "$portableDir/*" -DestinationPath "release-assets/FHSwitch-$env:RELEASE_TAG-Windows-Portable.zip" -Force
+          Remove-Item -Recurse -Force $portableDir
+          Get-ChildItem release-assets | Format-Table Name,Length
+
+      - name: Upload Windows assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY | Out-Null
+          $assetPaths = @(Get-ChildItem -Path release-assets -File | ForEach-Object { $_.FullName })
+          if ($assetPaths.Count -eq 0) {
+            throw 'No Windows release assets were prepared'
+          }
+          gh release upload $env:RELEASE_TAG @assetPaths --clobber --repo $env:GITHUB_REPOSITORY
+
+      - name: Refresh latest.json
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item -Recurse -Force dl -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path dl | Out-Null
+          gh release download $env:RELEASE_TAG --dir dl --repo $env:GITHUB_REPOSITORY --clobber
+
+          $baseUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:RELEASE_TAG"
+          $platforms = [ordered]@{}
+          foreach ($sig in Get-ChildItem -Path dl -Filter '*.sig') {
+            $assetName = $sig.BaseName
+            $signature = (Get-Content -Raw -Path $sig.FullName).Trim()
+            $url = "$baseUrl/$assetName"
+
+            switch -Wildcard ($assetName) {
+              '*.tar.gz' {
+                $platforms['darwin-aarch64'] = [ordered]@{ signature = $signature; url = $url }
+                $platforms['darwin-x86_64'] = [ordered]@{ signature = $signature; url = $url }
+              }
+              '*-Linux-arm64.AppImage' {
+                $platforms['linux-aarch64'] = [ordered]@{ signature = $signature; url = $url }
+              }
+              '*-Linux-x86_64.AppImage' {
+                $platforms['linux-x86_64'] = [ordered]@{ signature = $signature; url = $url }
+              }
+              '*.msi' {
+                $platforms['windows-x86_64'] = [ordered]@{ signature = $signature; url = $url }
+              }
+            }
+          }
+
+          $latest = [ordered]@{
+            version = $env:APP_VERSION
+            notes = "Release $env:RELEASE_TAG"
+            pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            platforms = $platforms
+          }
+          $latest | ConvertTo-Json -Depth 5 | Set-Content -Path latest.json -Encoding UTF8
+          Get-Content latest.json
+          gh release upload $env:RELEASE_TAG latest.json --clobber --repo $env:GITHUB_REPOSITORY
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-release-assets-${{ env.RELEASE_TAG }}
+          path: release-assets/*
+          if-no-files-found: error
