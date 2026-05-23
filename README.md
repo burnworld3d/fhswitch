@@ -95,7 +95,7 @@ FH Switch provides a "Shared Config Snippet" feature to pass common data (beyond
 <details>
 <summary><strong>macOS installation</strong></summary>
 
-FH Switch for macOS is code-signed and notarized by Apple. You can download and install it directly — no extra steps needed. We recommend using the `.dmg` installer.
+FH Switch for macOS is currently ad-hoc signed and not Apple-notarized. We recommend using the `.dmg` installer; if macOS blocks the app on first launch, open it from Finder with right-click > Open.
 
 </details>
 
@@ -178,7 +178,7 @@ brew upgrade --cask fhswitch
 
 Download `FHSwitch-v{version}-macOS.dmg` (recommended) or `.zip` from the [Releases](../../releases) page.
 
-> **Note**: FH Switch for macOS is code-signed and notarized by Apple. You can install and open it directly.
+> **Note**: FH Switch for macOS is currently ad-hoc signed and not Apple-notarized. If macOS blocks the app on first launch, open it from Finder with right-click > Open.
 
 ### Arch Linux Users
 
