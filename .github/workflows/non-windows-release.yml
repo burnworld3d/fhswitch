@@ -1,0 +1,365 @@
+name: Non-Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to update, for example v3.15.0"
+        required: true
+        default: "v3.15.0"
+  push:
+    tags:
+      - "build/non-windows-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: non-windows-release-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }} release assets
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            label: macOS
+          - os: ubuntu-22.04
+            label: Linux x86_64
+            arch: x86_64
+          - os: ubuntu-22.04-arm
+            label: Linux arm64
+            arch: arm64
+
+    steps:
+      - name: Resolve release tag
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          release_tag="${INPUT_RELEASE_TAG:-}"
+          if [ -z "$release_tag" ]; then
+            ref_name="$GITHUB_REF_NAME"
+            case "$ref_name" in
+              build/non-windows-*) release_tag="${ref_name#build/non-windows-}" ;;
+              *) release_tag="$ref_name" ;;
+            esac
+          fi
+          case "$release_tag" in
+            v*) ;;
+            *) release_tag="v$release_tag" ;;
+          esac
+          app_version="${release_tag#v}"
+          {
+            echo "RELEASE_TAG=$release_tag"
+            echo "APP_VERSION=$app_version"
+          } >> "$GITHUB_ENV"
+          echo "Updating release $release_tag with non-Windows assets for app version $app_version"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add macOS targets
+        if: runner.os == 'macOS'
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            curl \
+            wget \
+            file \
+            patchelf \
+            libssl-dev \
+            rpm \
+            flatpak \
+            flatpak-builder \
+            elfutils \
+            xdg-utils \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev \
+            || sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+          sudo apt-get install -y --no-install-recommends libsoup-3.0-dev \
+            || sudo apt-get install -y --no-install-recommends libsoup2.4-dev
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.3
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare Tauri signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY is missing" >&2
+            exit 1
+          fi
+
+          RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+          RAW=$(RAW="$RAW" node -e "process.stdout.write((process.env.RAW || '').replace(/^\uFEFF/, '').replace(/\r/g, ''))")
+          KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
+
+          if echo "$RAW" | head -n1 | grep -q '^untrusted comment:'; then
+            printf '%s\n' "$RAW" > "$KEY_PATH"
+          elif DECODED=$(printf '%s' "$RAW" | (base64 --decode 2>/dev/null || base64 -D 2>/dev/null)) \
+            && echo "$DECODED" | head -n1 | grep -q '^untrusted comment:'; then
+            printf '%s\n' "$DECODED" > "$KEY_PATH"
+          elif echo "$RAW" | grep -Eq '^[A-Za-z0-9+/=]+$'; then
+            ONE=$(printf '%s' "$RAW" | tr -d '\r\n')
+            printf '%s\n%s\n' "untrusted comment: tauri signing key" "$ONE" > "$KEY_PATH"
+          else
+            echo "TAURI_SIGNING_PRIVATE_KEY format is not recognized" >&2
+            exit 1
+          fi
+
+          KEY_B64=$(KEY_PATH="$KEY_PATH" node -e "process.stdout.write(require('fs').readFileSync(process.env.KEY_PATH).toString('base64'))")
+          if [ -z "$KEY_B64" ]; then
+            echo "Failed to encode Tauri signing key" >&2
+            exit 1
+          fi
+          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
+
+          if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
+            RAW_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+            PASSWORD=$(RAW_PASSWORD="$RAW_PASSWORD" node -e "process.stdout.write((process.env.RAW_PASSWORD || '').replace(/^\uFEFF/, '').replace(/[\r\n]+$/g, ''))")
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build macOS app
+        if: runner.os == 'macOS'
+        shell: bash
+        timeout-minutes: 60
+        run: |
+          set -euo pipefail
+          pnpm tauri build --target universal-apple-darwin
+
+      - name: Build Linux app
+        if: runner.os == 'Linux'
+        run: pnpm tauri build --bundles appimage,deb,rpm
+
+      - name: Prepare macOS assets
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p release-assets
+
+          tar_gz=""
+          app_path=""
+          for path in \
+            "src-tauri/target/universal-apple-darwin/release/bundle/macos" \
+            "src-tauri/target/aarch64-apple-darwin/release/bundle/macos" \
+            "src-tauri/target/x86_64-apple-darwin/release/bundle/macos" \
+            "src-tauri/target/release/bundle/macos"; do
+            if [ -d "$path" ]; then
+              [ -z "$tar_gz" ] && tar_gz=$(find "$path" -maxdepth 1 -name "*.tar.gz" -type f | head -1 || true)
+              [ -z "$app_path" ] && app_path=$(find "$path" -maxdepth 1 -name "*.app" -type d | head -1 || true)
+            fi
+          done
+
+          if [ -z "$tar_gz" ]; then
+            echo "No macOS .tar.gz updater artifact found" >&2
+            exit 1
+          fi
+          if [ -z "$app_path" ]; then
+            echo "No macOS .app found" >&2
+            exit 1
+          fi
+
+          new_tar_gz="FHSwitch-${RELEASE_TAG}-macOS.tar.gz"
+          cp "$tar_gz" "release-assets/$new_tar_gz"
+          if [ ! -f "$tar_gz.sig" ]; then
+            echo "No macOS .tar.gz signature found" >&2
+            exit 1
+          fi
+          cp "$tar_gz.sig" "release-assets/$new_tar_gz.sig"
+
+          new_zip="FHSwitch-${RELEASE_TAG}-macOS.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "release-assets/$new_zip"
+
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
+          new_dmg="FHSwitch-${RELEASE_TAG}-macOS.dmg"
+          dmg_stage_dir="$RUNNER_TEMP/dmg-stage"
+          rm -rf "$dmg_stage_dir"
+          mkdir -p "$dmg_stage_dir"
+          ditto "$app_path" "$dmg_stage_dir/FH Switch.app"
+          create-dmg \
+            --volname "FH Switch" \
+            --background "src-tauri/icons/dmg-background.png" \
+            --window-size 660 400 \
+            --window-pos 200 120 \
+            --icon-size 80 \
+            --icon "FH Switch.app" 180 220 \
+            --hide-extension "FH Switch.app" \
+            --app-drop-link 480 220 \
+            --no-internet-enable \
+            "release-assets/$new_dmg" \
+            "$dmg_stage_dir"
+          rm -rf "$dmg_stage_dir"
+          ls -la release-assets
+
+      - name: Prepare Linux assets
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p release-assets
+          arch="${{ matrix.arch }}"
+
+          appimage=$(find src-tauri/target/release/bundle -name "*.AppImage" -type f | head -1 || true)
+          if [ -z "$appimage" ]; then
+            echo "No AppImage found under target/release/bundle" >&2
+            exit 1
+          fi
+          new_appimage="FHSwitch-${RELEASE_TAG}-Linux-${arch}.AppImage"
+          cp "$appimage" "release-assets/$new_appimage"
+          if [ ! -f "$appimage.sig" ]; then
+            echo "No AppImage signature found" >&2
+            exit 1
+          fi
+          cp "$appimage.sig" "release-assets/$new_appimage.sig"
+
+          deb=$(find src-tauri/target/release/bundle -name "*.deb" -type f | head -1 || true)
+          if [ -n "$deb" ]; then
+            cp "$deb" "release-assets/FHSwitch-${RELEASE_TAG}-Linux-${arch}.deb"
+          fi
+
+          rpm=$(find src-tauri/target/release/bundle -name "*.rpm" -type f | head -1 || true)
+          if [ -n "$rpm" ]; then
+            cp "$rpm" "release-assets/FHSwitch-${RELEASE_TAG}-Linux-${arch}.rpm"
+          fi
+          ls -la release-assets
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: non-windows-release-assets-${{ matrix.label }}-${{ env.RELEASE_TAG }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  refresh-latest-json:
+    name: Refresh latest.json
+    runs-on: ubuntu-22.04
+    needs: build
+
+    steps:
+      - name: Resolve release tag
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          release_tag="${INPUT_RELEASE_TAG:-}"
+          if [ -z "$release_tag" ]; then
+            ref_name="$GITHUB_REF_NAME"
+            case "$ref_name" in
+              build/non-windows-*) release_tag="${ref_name#build/non-windows-}" ;;
+              *) release_tag="$ref_name" ;;
+            esac
+          fi
+          case "$release_tag" in
+            v*) ;;
+            *) release_tag="v$release_tag" ;;
+          esac
+          {
+            echo "RELEASE_TAG=$release_tag"
+            echo "APP_VERSION=${release_tag#v}"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate and upload latest.json
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf dl
+          mkdir -p dl
+          gh release download "$RELEASE_TAG" --dir dl --repo "$GITHUB_REPOSITORY" --clobber
+
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          release_tag = os.environ["RELEASE_TAG"]
+          app_version = os.environ["APP_VERSION"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          base_url = f"https://github.com/{repo}/releases/download/{release_tag}"
+          platforms = {}
+
+          for sig_path in sorted(Path("dl").glob("*.sig")):
+              asset_name = sig_path.name[:-4]
+              signature = sig_path.read_text(encoding="utf-8").strip()
+              entry = {"signature": signature, "url": f"{base_url}/{asset_name}"}
+
+              if asset_name.endswith(".tar.gz"):
+                  platforms["darwin-aarch64"] = entry
+                  platforms["darwin-x86_64"] = entry
+              elif asset_name.endswith("-Linux-arm64.AppImage"):
+                  platforms["linux-aarch64"] = entry
+              elif asset_name.endswith("-Linux-x86_64.AppImage"):
+                  platforms["linux-x86_64"] = entry
+              elif asset_name.endswith(".msi"):
+                  platforms["windows-x86_64"] = entry
+
+          latest = {
+              "version": app_version,
+              "notes": f"Release {release_tag}",
+              "pub_date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "platforms": platforms,
+          }
+
+          Path("latest.json").write_text(json.dumps(latest, indent=2) + "\n", encoding="utf-8")
+          print(Path("latest.json").read_text(encoding="utf-8"))
+          PY
+
+          gh release upload "$RELEASE_TAG" latest.json --clobber --repo "$GITHUB_REPOSITORY"
