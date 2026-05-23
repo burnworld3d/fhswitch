@@ -152,7 +152,6 @@ describe("ProviderList Component", () => {
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onDuplicate={vi.fn()}
-        onOpenWebsite={vi.fn()}
         isLoading
       />,
     );
@@ -180,7 +179,6 @@ describe("ProviderList Component", () => {
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onDuplicate={vi.fn()}
-        onOpenWebsite={vi.fn()}
         onCreate={handleCreate}
       />,
     );
@@ -202,8 +200,6 @@ describe("ProviderList Component", () => {
     const handleDelete = vi.fn();
     const handleDuplicate = vi.fn();
     const handleUsage = vi.fn();
-    const handleOpenWebsite = vi.fn();
-
     useDragSortMock.mockReturnValue({
       sortedProviders: [providerB, providerA],
       sensors: [],
@@ -220,7 +216,6 @@ describe("ProviderList Component", () => {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         onConfigureUsage={handleUsage}
-        onOpenWebsite={handleOpenWebsite}
       />,
     );
 
@@ -235,12 +230,12 @@ describe("ProviderList Component", () => {
     // Drag attributes from useSortable
     expect(
       providerCardRenderSpy.mock.calls[0][0].dragHandleProps?.attributes[
-      "data-dnd-id"
+        "data-dnd-id"
       ],
     ).toBe("b");
     expect(
       providerCardRenderSpy.mock.calls[1][0].dragHandleProps?.attributes[
-      "data-dnd-id"
+        "data-dnd-id"
       ],
     ).toBe("a");
 
@@ -283,7 +278,6 @@ describe("ProviderList Component", () => {
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onDuplicate={vi.fn()}
-        onOpenWebsite={vi.fn()}
       />,
     );
 

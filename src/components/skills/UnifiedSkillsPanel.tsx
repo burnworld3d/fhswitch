@@ -1,12 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Sparkles,
-  Trash2,
-  ExternalLink,
-  RefreshCw,
-  Loader2,
-} from "lucide-react";
+import { Sparkles, Trash2, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,7 +23,7 @@ import {
 } from "@/hooks/useSkills";
 import type { AppId } from "@/lib/api/types";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { settingsApi, skillsApi } from "@/lib/api";
+import { skillsApi } from "@/lib/api";
 import { toast } from "sonner";
 import { SKILLS_APP_IDS } from "@/config/appConfig";
 import { AppCountBar } from "@/components/common/AppCountBar";
@@ -498,15 +492,6 @@ const InstalledSkillListItem: React.FC<InstalledSkillListItemProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const openDocs = async () => {
-    if (!skill.readmeUrl) return;
-    try {
-      await settingsApi.openExternal(skill.readmeUrl);
-    } catch {
-      // ignore
-    }
-  };
-
   const sourceLabel = useMemo(() => {
     if (skill.repoOwner && skill.repoName) {
       return `${skill.repoOwner}/${skill.repoName}`;
@@ -521,15 +506,6 @@ const InstalledSkillListItem: React.FC<InstalledSkillListItemProps> = ({
           <span className="font-medium text-sm text-foreground truncate">
             {skill.name}
           </span>
-          {skill.readmeUrl && (
-            <button
-              type="button"
-              onClick={openDocs}
-              className="text-muted-foreground/60 hover:text-foreground flex-shrink-0"
-            >
-              <ExternalLink size={12} />
-            </button>
-          )}
           <span className="text-xs text-muted-foreground/50 flex-shrink-0">
             {sourceLabel}
           </span>

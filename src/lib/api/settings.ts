@@ -31,10 +31,6 @@ export const settingsApi = {
     return await invoke("restart_app");
   },
 
-  async checkUpdates(): Promise<void> {
-    await invoke("check_for_updates");
-  },
-
   async isPortable(): Promise<boolean> {
     return await invoke("is_portable_mode");
   },

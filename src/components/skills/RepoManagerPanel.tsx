@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, ExternalLink, Plus } from "lucide-react";
-import { settingsApi } from "@/lib/api";
+import { Trash2, Plus } from "lucide-react";
 import { FullScreenPanel } from "@/components/common/FullScreenPanel";
 import type { DiscoverableSkill, SkillRepo } from "@/lib/api/skills";
 
@@ -72,14 +71,6 @@ export function RepoManagerPanel({
       setBranch("");
     } catch (e) {
       setError(e instanceof Error ? e.message : t("skills.repo.addFailed"));
-    }
-  };
-
-  const handleOpenRepo = async (owner: string, name: string) => {
-    try {
-      await settingsApi.openExternal(`https://github.com/${owner}/${name}`);
-    } catch (error) {
-      console.error("Failed to open URL:", error);
     }
   };
 
@@ -165,16 +156,6 @@ export function RepoManagerPanel({
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={() => handleOpenRepo(repo.owner, repo.name)}
-                    title={t("common.view", { defaultValue: "查看" })}
-                    className="hover:bg-black/5 dark:hover:bg-white/5"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

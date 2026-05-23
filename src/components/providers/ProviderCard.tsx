@@ -46,7 +46,6 @@ interface ProviderCardProps {
   onDisableOmo?: () => void;
   onDisableOmoSlim?: () => void;
   onConfigureUsage: (provider: Provider) => void;
-  onOpenWebsite: (url: string) => void;
   onDuplicate: (provider: Provider) => void;
   onTest?: (provider: Provider) => void;
   onOpenTerminal?: (provider: Provider) => void;
@@ -138,7 +137,6 @@ export function ProviderCard({
   onDisableOmo,
   onDisableOmoSlim,
   onConfigureUsage,
-  onOpenWebsite,
   onDuplicate,
   onTest,
   onOpenTerminal,
@@ -171,16 +169,6 @@ export function ProviderCard({
   const displayUrl = useMemo(() => {
     return extractApiUrl(provider, fallbackUrlText);
   }, [provider, fallbackUrlText]);
-
-  const isClickableUrl = useMemo(() => {
-    if (provider.notes?.trim()) {
-      return false;
-    }
-    if (displayUrl === fallbackUrlText) {
-      return false;
-    }
-    return true;
-  }, [provider.notes, displayUrl, fallbackUrlText]);
 
   const usageEnabled = provider.meta?.usage_script?.enabled ?? false;
   const isOfficial = isOfficialProvider(provider, appId);
@@ -239,13 +227,6 @@ export function ProviderCard({
       setIsExpanded(true);
     }
   }, [hasMultiplePlans]);
-
-  const handleOpenWebsite = () => {
-    if (!isClickableUrl) {
-      return;
-    }
-    onOpenWebsite(displayUrl);
-  };
 
   // 判断是否是"当前使用中"的供应商
   // - OMO/OMO Slim 供应商：使用 isCurrent
@@ -427,20 +408,12 @@ export function ProviderCard({
             </div>
 
             {displayUrl && (
-              <button
-                type="button"
-                onClick={handleOpenWebsite}
-                className={cn(
-                  "inline-flex items-center text-sm max-w-[280px]",
-                  isClickableUrl
-                    ? "text-blue-500 transition-colors hover:underline dark:text-blue-400 cursor-pointer"
-                    : "text-muted-foreground cursor-default",
-                )}
+              <span
+                className="inline-flex items-center text-sm max-w-[280px] text-muted-foreground"
                 title={displayUrl}
-                disabled={!isClickableUrl}
               >
                 <span className="truncate">{displayUrl}</span>
-              </button>
+              </span>
             )}
           </div>
         </div>

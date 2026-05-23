@@ -29,7 +29,6 @@ vi.mock("@/components/providers/ProviderList", () => ({
     onEdit,
     onDuplicate,
     onConfigureUsage,
-    onOpenWebsite,
     onCreate,
   }: any) => (
     <div>
@@ -44,9 +43,6 @@ vi.mock("@/components/providers/ProviderList", () => ({
       </button>
       <button onClick={() => onConfigureUsage(providers[currentProviderId])}>
         usage
-      </button>
-      <button onClick={() => onOpenWebsite("https://example.com")}>
-        open-website
       </button>
       <button onClick={() => onCreate?.()}>create</button>
     </div>
@@ -208,8 +204,6 @@ describe("App integration with MSW", () => {
     await waitFor(() =>
       expect(screen.getByTestId("provider-list").textContent).toMatch(/copy/),
     );
-
-    fireEvent.click(screen.getByText("open-website"));
 
     emitTauriEvent("provider-switched", {
       appType: "codex",

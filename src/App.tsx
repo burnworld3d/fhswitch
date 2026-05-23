@@ -26,7 +26,6 @@ import {
   KeyRound,
   Shield,
   Cpu,
-  LayoutDashboard,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Provider, VisibleApps } from "@/types";
@@ -41,8 +40,7 @@ import {
 import { checkAllEnvConflicts, checkEnvConflicts } from "@/lib/api/env";
 import { useProviderActions } from "@/hooks/useProviderActions";
 import { openclawKeys, useOpenClawHealth } from "@/hooks/useOpenClaw";
-import { hermesKeys, useOpenHermesWebUI } from "@/hooks/useHermes";
-import { hermesApi } from "@/lib/api/hermes";
+import { hermesKeys } from "@/hooks/useHermes";
 import { useProxyStatus } from "@/hooks/useProxyStatus";
 import { useAutoCompact } from "@/hooks/useAutoCompact";
 import { useUsageCacheBridge } from "@/hooks/useUsageCacheBridge";
@@ -652,24 +650,6 @@ function App() {
     };
   }, []);
 
-  const [launchDashboardOpen, setLaunchDashboardOpen] = useState(false);
-  const openHermesWebUI = useOpenHermesWebUI(() =>
-    setLaunchDashboardOpen(true),
-  );
-
-  const handleOpenWebsite = async (url: string) => {
-    try {
-      await settingsApi.openExternal(url);
-    } catch (error) {
-      const detail =
-        extractErrorMessage(error) ||
-        t("notifications.openLinkFailed", {
-          defaultValue: "链接打开失败",
-        });
-      toast.error(detail);
-    }
-  };
-
   const handleEditProvider = async ({
     provider,
     originalId,
@@ -1039,7 +1019,6 @@ function App() {
                       }
                       onDuplicate={handleDuplicateProvider}
                       onConfigureUsage={setUsageProvider}
-                      onOpenWebsite={handleOpenWebsite}
                       onOpenTerminal={
                         activeApp === "claude" ? handleOpenTerminal : undefined
                       }
@@ -1218,19 +1197,16 @@ function App() {
             ) : (
               <div className="flex items-center gap-2">
                 <div className="relative inline-flex items-center">
-                  <a
-                    href="https://github.com/burnworld3d/fhswitch"
-                    target="_blank"
-                    rel="noreferrer"
+                  <span
                     className={cn(
                       "text-xl font-semibold transition-colors",
                       isProxyRunning && isCurrentAppTakeoverActive
-                        ? "text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
-                        : "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300",
+                        ? "text-emerald-500 dark:text-emerald-400"
+                        : "text-blue-500 dark:text-blue-400",
                     )}
                   >
                     FH Switch
-                  </a>
+                  </span>
                 </div>
                 <Button
                   variant="ghost"
@@ -1449,15 +1425,6 @@ function App() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => void openHermesWebUI()}
-                                className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
-                                title={t("hermes.webui.open")}
-                              >
-                                <LayoutDashboard className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
                                 onClick={() => setCurrentView("mcp")}
                                 className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 w-8 px-2"
                                 title={t("mcp.title")}
@@ -1646,28 +1613,6 @@ function App() {
         }
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmAction(null)}
-      />
-
-      <ConfirmDialog
-        isOpen={launchDashboardOpen}
-        title={t("hermes.webui.launchConfirmTitle")}
-        message={t("hermes.webui.launchConfirmMessage")}
-        confirmText={t("hermes.webui.launchConfirmAction")}
-        variant="info"
-        onConfirm={() => {
-          setLaunchDashboardOpen(false);
-          void (async () => {
-            try {
-              await hermesApi.launchDashboard();
-              toast.success(t("hermes.webui.launching"));
-            } catch (error) {
-              toast.error(t("hermes.webui.launchFailed"), {
-                description: extractErrorMessage(error) || undefined,
-              });
-            }
-          })();
-        }}
-        onCancel={() => setLaunchDashboardOpen(false)}
       />
 
       <DeepLinkImportDialog />

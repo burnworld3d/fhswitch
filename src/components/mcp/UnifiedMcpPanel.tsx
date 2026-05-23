@@ -13,8 +13,7 @@ import type { McpServer } from "@/types";
 import type { AppId } from "@/lib/api/types";
 import McpFormModal from "./McpFormModal";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { Edit3, Trash2, ExternalLink } from "lucide-react";
-import { settingsApi } from "@/lib/api";
+import { Edit3, Trash2 } from "lucide-react";
 import { mcpPresets } from "@/config/mcpPresets";
 import { toast } from "sonner";
 import { MCP_APP_IDS } from "@/config/appConfig";
@@ -236,19 +235,7 @@ const UnifiedMcpListItem: React.FC<UnifiedMcpListItemProps> = ({
   const description = server.description || "";
 
   const meta = mcpPresets.find((p) => p.id === id);
-  const docsUrl = server.docs || meta?.docs;
-  const homepageUrl = server.homepage || meta?.homepage;
   const tags = server.tags || meta?.tags;
-
-  const openDocs = async () => {
-    const url = docsUrl || homepageUrl;
-    if (!url) return;
-    try {
-      await settingsApi.openExternal(url);
-    } catch {
-      // ignore
-    }
-  };
 
   return (
     <ListItemRow isLast={isLast}>
@@ -257,16 +244,6 @@ const UnifiedMcpListItem: React.FC<UnifiedMcpListItemProps> = ({
           <span className="font-medium text-sm text-foreground truncate">
             {name}
           </span>
-          {docsUrl && (
-            <button
-              type="button"
-              onClick={openDocs}
-              className="text-muted-foreground/60 hover:text-foreground flex-shrink-0"
-              title={t("mcp.presets.docs")}
-            >
-              <ExternalLink size={12} />
-            </button>
-          )}
         </div>
         {description && (
           <p

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Download,
   Copy,
-  ExternalLink,
-  Github,
   Info,
   Loader2,
   RefreshCw,
@@ -229,41 +227,10 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ... (handlers like handleOpenReleaseNotes, handleCheckUpdate) ...
-
-  const handleOpenReleaseNotes = useCallback(async () => {
-    try {
-      const targetVersion = updateInfo?.availableVersion ?? version ?? "";
-      const displayVersion = targetVersion.startsWith("v")
-        ? targetVersion
-        : targetVersion
-          ? `v${targetVersion}`
-          : "";
-
-      if (!displayVersion) {
-        await settingsApi.openExternal(
-          "https://github.com/burnworld3d/fhswitch/releases",
-        );
-        return;
-      }
-
-      await settingsApi.openExternal(
-        `https://github.com/burnworld3d/fhswitch/releases/tag/${displayVersion}`,
-      );
-    } catch (error) {
-      console.error("[AboutSection] Failed to open release notes", error);
-      toast.error(t("settings.openReleaseNotesFailed"));
-    }
-  }, [t, updateInfo?.availableVersion, version]);
-
   const handleCheckUpdate = useCallback(async () => {
     if (hasUpdate && updateHandle) {
       if (isPortable) {
-        try {
-          await settingsApi.checkUpdates();
-        } catch (error) {
-          console.error("[AboutSection] Portable update failed", error);
-        }
+        toast.error(t("settings.updateFailed"));
         return;
       }
 
@@ -275,14 +242,6 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
       } catch (error) {
         console.error("[AboutSection] Update failed", error);
         toast.error(t("settings.updateFailed"));
-        try {
-          await settingsApi.checkUpdates();
-        } catch (fallbackError) {
-          console.error(
-            "[AboutSection] Failed to open fallback updater",
-            fallbackError,
-          );
-        }
       } finally {
         setIsDownloading(false);
       }
@@ -361,30 +320,6 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                settingsApi.openExternal(
-                  "https://github.com/burnworld3d/fhswitch",
-                )
-              }
-              className="h-8 gap-1.5 text-xs"
-            >
-              <Github className="h-3.5 w-3.5" />
-              {t("settings.github")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleOpenReleaseNotes}
-              className="h-8 gap-1.5 text-xs"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              {t("settings.releaseNotes")}
-            </Button>
             <Button
               type="button"
               size="sm"

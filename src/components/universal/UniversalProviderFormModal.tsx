@@ -10,11 +10,6 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import JsonEditor from "@/components/JsonEditor";
 import type { UniversalProvider, UniversalProviderModels } from "@/types";
-import {
-  universalProviderPresets,
-  createUniversalProviderFromPreset,
-  type UniversalProviderPreset,
-} from "@/config/universalProviderPresets";
 
 interface UniversalProviderFormModalProps {
   isOpen: boolean;
@@ -22,7 +17,6 @@ interface UniversalProviderFormModalProps {
   onSave: (provider: UniversalProvider) => void;
   onSaveAndSync?: (provider: UniversalProvider) => void;
   editingProvider?: UniversalProvider | null;
-  initialPreset?: UniversalProviderPreset | null;
 }
 
 export function UniversalProviderFormModal({
@@ -31,14 +25,11 @@ export function UniversalProviderFormModal({
   onSave,
   onSaveAndSync,
   editingProvider,
-  initialPreset,
 }: UniversalProviderFormModalProps) {
   const { t } = useTranslation();
   const isEditMode = !!editingProvider;
 
   // 表单状态
-  const [selectedPreset, setSelectedPreset] =
-    useState<UniversalProviderPreset | null>(null);
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -72,42 +63,19 @@ export function UniversalProviderFormModal({
       setCodexEnabled(editingProvider.apps.codex);
       setGeminiEnabled(editingProvider.apps.gemini);
       setModels(editingProvider.models || {});
-
-      // 尝试匹配预设
-      const preset = universalProviderPresets.find(
-        (p) => p.providerType === editingProvider.providerType,
-      );
-      setSelectedPreset(preset || null);
     } else {
-      // 新建模式：使用传入的预设或默认选择第一个预设
-      const defaultPreset = initialPreset || universalProviderPresets[0];
-      setSelectedPreset(defaultPreset);
-      setName(defaultPreset.name);
+      // 新建模式：手动配置，不提供内置预设
+      setName("");
       setBaseUrl("");
       setApiKey("");
-      setWebsiteUrl(defaultPreset.websiteUrl || "");
+      setWebsiteUrl("");
       setNotes("");
-      setClaudeEnabled(defaultPreset.defaultApps.claude);
-      setCodexEnabled(defaultPreset.defaultApps.codex);
-      setGeminiEnabled(defaultPreset.defaultApps.gemini);
-      setModels(JSON.parse(JSON.stringify(defaultPreset.defaultModels)));
+      setClaudeEnabled(true);
+      setCodexEnabled(true);
+      setGeminiEnabled(true);
+      setModels({});
     }
-  }, [editingProvider, initialPreset, isOpen]);
-
-  // 选择预设
-  const handlePresetSelect = useCallback(
-    (preset: UniversalProviderPreset) => {
-      setSelectedPreset(preset);
-      if (!isEditMode) {
-        setName(preset.name);
-        setClaudeEnabled(preset.defaultApps.claude);
-        setCodexEnabled(preset.defaultApps.codex);
-        setGeminiEnabled(preset.defaultApps.gemini);
-        setModels(JSON.parse(JSON.stringify(preset.defaultModels)));
-      }
-    },
-    [isEditMode],
-  );
+  }, [editingProvider, isOpen]);
 
   // 更新模型配置
   const updateModel = useCallback(
@@ -203,13 +171,22 @@ requires_openai_auth = true`;
           },
           models,
         }
-      : createUniversalProviderFromPreset(
-          selectedPreset || universalProviderPresets[0],
-          crypto.randomUUID(),
-          baseUrl.trim(),
-          apiKey.trim(),
-          name.trim(),
-        );
+      : {
+          id: crypto.randomUUID(),
+          name: name.trim(),
+          providerType: "custom",
+          apps: {
+            claude: claudeEnabled,
+            codex: codexEnabled,
+            gemini: geminiEnabled,
+          },
+          baseUrl: baseUrl.trim(),
+          apiKey: apiKey.trim(),
+          models,
+          websiteUrl: websiteUrl.trim() || undefined,
+          notes: notes.trim() || undefined,
+          createdAt: Date.now(),
+        };
 
     // 如果是新建，更新应用启用状态和模型
     if (!editingProvider) {
@@ -236,7 +213,6 @@ requires_openai_auth = true`;
     codexEnabled,
     geminiEnabled,
     models,
-    selectedPreset,
     onSave,
     onClose,
   ]);
@@ -262,13 +238,22 @@ requires_openai_auth = true`;
           },
           models,
         }
-      : createUniversalProviderFromPreset(
-          selectedPreset || universalProviderPresets[0],
-          crypto.randomUUID(),
-          baseUrl.trim(),
-          apiKey.trim(),
-          name.trim(),
-        );
+      : {
+          id: crypto.randomUUID(),
+          name: name.trim(),
+          providerType: "custom",
+          apps: {
+            claude: claudeEnabled,
+            codex: codexEnabled,
+            gemini: geminiEnabled,
+          },
+          baseUrl: baseUrl.trim(),
+          apiKey: apiKey.trim(),
+          models,
+          websiteUrl: websiteUrl.trim() || undefined,
+          notes: notes.trim() || undefined,
+          createdAt: Date.now(),
+        };
 
     // 如果是新建，更新应用启用状态和模型
     if (!editingProvider) {
@@ -294,7 +279,6 @@ requires_openai_auth = true`;
     codexEnabled,
     geminiEnabled,
     models,
-    selectedPreset,
   ]);
 
   // 打开保存并同步确认弹窗
@@ -352,43 +336,6 @@ requires_openai_auth = true`;
       footer={footer}
     >
       <div className="space-y-6">
-        {/* 预设选择（仅新建模式） */}
-        {!isEditMode && (
-          <div className="space-y-3">
-            <Label>
-              {t("universalProvider.selectPreset", {
-                defaultValue: "选择预设类型",
-              })}
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {universalProviderPresets.map((preset) => (
-                <button
-                  key={preset.providerType}
-                  type="button"
-                  onClick={() => handlePresetSelect(preset)}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    selectedPreset?.providerType === preset.providerType
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-accent text-muted-foreground hover:bg-accent/80"
-                  }`}
-                >
-                  <ProviderIcon
-                    icon={preset.icon}
-                    name={preset.name}
-                    size={16}
-                  />
-                  {preset.name}
-                </button>
-              ))}
-            </div>
-            {selectedPreset?.description && (
-              <p className="text-xs text-muted-foreground">
-                {selectedPreset.description}
-              </p>
-            )}
-          </div>
-        )}
-
         {/* 基本信息 */}
         <div className="space-y-4">
           <div className="space-y-2">

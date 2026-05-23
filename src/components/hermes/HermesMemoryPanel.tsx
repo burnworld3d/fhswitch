@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,7 +8,6 @@ import MarkdownEditor from "@/components/MarkdownEditor";
 import {
   useHermesMemory,
   useHermesMemoryLimits,
-  useOpenHermesWebUI,
   useSaveHermesMemory,
   useToggleHermesMemoryEnabled,
 } from "@/hooks/useHermes";
@@ -129,7 +127,6 @@ const MemoryTabPane: React.FC<MemoryTabPaneProps> = ({
 const HermesMemoryPanel: React.FC = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<HermesMemoryKind>("memory");
-  const openHermesWebUI = useOpenHermesWebUI();
   const { data: limits } = useHermesMemoryLimits(true);
 
   const memoryLimit = limits?.memory ?? 2200;
@@ -144,21 +141,13 @@ const HermesMemoryPanel: React.FC = () => {
         onValueChange={(v) => setActiveTab(v as HermesMemoryKind)}
         className="flex-1 flex flex-col"
       >
-        <div className="px-6 pt-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="px-6 pt-4 flex items-center gap-3 flex-wrap">
           <TabsList>
             <TabsTrigger value="memory">
               {t("hermes.memory.agentTab")}
             </TabsTrigger>
             <TabsTrigger value="user">{t("hermes.memory.userTab")}</TabsTrigger>
           </TabsList>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void openHermesWebUI("/config")}
-          >
-            <ExternalLink className="w-3.5 h-3.5 mr-1" />
-            {t("hermes.memory.openConfig")}
-          </Button>
         </div>
 
         <TabsContent value="memory" className="flex-1 px-6 pb-4 mt-4">

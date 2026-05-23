@@ -10,8 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Download, Trash2, Loader2 } from "lucide-react";
-import { settingsApi } from "@/lib/api";
+import { Download, Trash2, Loader2 } from "lucide-react";
 import type { DiscoverableSkill } from "@/lib/api/skills";
 
 type SkillCardSkill = DiscoverableSkill & { installed: boolean };
@@ -47,16 +46,6 @@ export function SkillCard({
       await onUninstall(skill.key);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleOpenGithub = async () => {
-    if (skill.readmeUrl) {
-      try {
-        await settingsApi.openExternal(skill.readmeUrl);
-      } catch (error) {
-        console.error("Failed to open URL:", error);
-      }
     }
   };
 
@@ -118,18 +107,6 @@ export function SkillCard({
         <div className="flex-1" />
       )}
       <CardFooter className="flex gap-2 pt-3 border-t border-border/50 relative z-10">
-        {skill.readmeUrl && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleOpenGithub}
-            disabled={loading}
-            className="flex-1"
-          >
-            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-            {t("skills.view")}
-          </Button>
-        )}
         {skill.installed ? (
           <Button
             variant="outline"

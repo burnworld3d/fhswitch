@@ -60,7 +60,6 @@ interface ProviderListProps {
   onDisableOmoSlim?: () => void;
   onDuplicate: (provider: Provider) => void;
   onConfigureUsage?: (provider: Provider) => void;
-  onOpenWebsite: (url: string) => void;
   onOpenTerminal?: (provider: Provider) => void;
   onCreate?: () => void;
   isLoading?: boolean;
@@ -82,7 +81,6 @@ export function ProviderList({
   onDisableOmoSlim,
   onDuplicate,
   onConfigureUsage,
-  onOpenWebsite,
   onOpenTerminal,
   onCreate,
   isLoading = false,
@@ -438,7 +436,6 @@ export function ProviderList({
                 onDisableOmoSlim={onDisableOmoSlim}
                 onDuplicate={onDuplicate}
                 onConfigureUsage={onConfigureUsage}
-                onOpenWebsite={onOpenWebsite}
                 onOpenTerminal={onOpenTerminal}
                 onTest={handleTest}
                 isTesting={isChecking(provider.id)}
@@ -590,7 +587,6 @@ interface SortableProviderCardProps {
   onDisableOmoSlim?: () => void;
   onDuplicate: (provider: Provider) => void;
   onConfigureUsage?: (provider: Provider) => void;
-  onOpenWebsite: (url: string) => void;
   onOpenTerminal?: (provider: Provider) => void;
   onTest?: (provider: Provider) => void;
   isTesting: boolean;
@@ -621,7 +617,6 @@ function SortableProviderCard({
   onDisableOmoSlim,
   onDuplicate,
   onConfigureUsage,
-  onOpenWebsite,
   onOpenTerminal,
   onTest,
   isTesting,
@@ -668,7 +663,6 @@ function SortableProviderCard({
         onConfigureUsage={
           onConfigureUsage ? (item) => onConfigureUsage(item) : () => undefined
         }
-        onOpenWebsite={onOpenWebsite}
         onOpenTerminal={onOpenTerminal}
         onTest={onTest}
         isTesting={isTesting}
