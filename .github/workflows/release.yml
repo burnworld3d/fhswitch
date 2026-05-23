@@ -147,7 +147,9 @@ jobs:
           fi
           echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
           if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> $GITHUB_ENV
+            RAW_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
+            PASSWORD=$(RAW_PASSWORD="$RAW_PASSWORD" node -e "process.stdout.write((process.env.RAW_PASSWORD || '').replace(/^\uFEFF/, '').replace(/[\r\n]+$/g, ''))")
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
           fi
           echo "✅ Tauri signing key prepared"
 

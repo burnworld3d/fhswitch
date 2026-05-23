@@ -61,7 +61,7 @@
       }
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU5QkQ4RDI5RjM2QjczODMKUldTRGMydnpLWTI5NldOY1RJK3E3WUMvcXhUL0ZvdDlmb3QxY2w5NnJXbnRHcE5XZm9GclFDU0kK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhGMTVENzJERjlGQjA3NTgKUldSWUIvdjVMZGNWajh2UGxoZHNDcjU1cDE5NGRENEtlZ2hxWlBpYlFXR25OaU84L1ZNb20wd20K",
       "endpoints": [
         "https://github.com/burnworld3d/fhswitch/releases/latest/download/latest.json"
       ]
