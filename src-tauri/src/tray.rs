@@ -28,6 +28,12 @@ pub struct TrayTexts {
 
 impl TrayTexts {
     pub fn from_language(language: &str) -> Self {
+        let language = if matches!(language, "zh" | "ja") {
+            language
+        } else {
+            "en"
+        };
+
         match language {
             "en" => Self {
                 show_main: "Open main window",
@@ -464,7 +470,7 @@ pub fn create_tray_menu(
     app_state: &AppState,
 ) -> Result<Menu<tauri::Wry>, AppError> {
     let app_settings = crate::settings::get_settings();
-    let tray_texts = TrayTexts::from_language(app_settings.language.as_deref().unwrap_or("zh"));
+    let tray_texts = TrayTexts::from_language(app_settings.language.as_deref().unwrap_or("en"));
 
     // Get visible apps setting, default to all visible
     let visible_apps = app_settings.visible_apps.unwrap_or_default();
