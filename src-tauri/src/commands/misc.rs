@@ -56,7 +56,7 @@ pub async fn check_for_updates(handle: AppHandle) -> Result<bool, String> {
     handle
         .opener()
         .open_url(
-            "https://github.com/farion1231/cc-switch/releases/latest",
+            "https://github.com/burnworld3d/fhswitch/releases/latest",
             None::<String>,
         )
         .map_err(|e| format!("打开更新页面失败: {e}"))?;
@@ -256,7 +256,7 @@ async fn fetch_github_latest_version(client: &reqwest::Client, repo: &str) -> Op
     let url = format!("https://api.github.com/repos/{repo}/releases/latest");
     match client
         .get(&url)
-        .header("User-Agent", "cc-switch")
+        .header("User-Agent", "fhswitch")
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
@@ -940,7 +940,7 @@ fn launch_macos_terminal(config_file: &std::path::Path, cwd: Option<&Path>) -> R
     let terminal = preferred.as_deref().unwrap_or("terminal");
 
     let temp_dir = std::env::temp_dir();
-    let script_file = temp_dir.join(format!("cc_switch_launcher_{}.sh", std::process::id()));
+    let script_file = temp_dir.join(format!("fhswitch_launcher_{}.sh", std::process::id()));
     let config_path = config_file.to_string_lossy();
     let cd_command = build_shell_cd_command(cwd);
 
@@ -1220,7 +1220,7 @@ fn launch_linux_terminal(config_file: &std::path::Path, cwd: Option<&Path>) -> R
 
     // Create temp script file
     let temp_dir = std::env::temp_dir();
-    let script_file = temp_dir.join(format!("cc_switch_launcher_{}.sh", std::process::id()));
+    let script_file = temp_dir.join(format!("fhswitch_launcher_{}.sh", std::process::id()));
     let config_path = config_file.to_string_lossy();
     let cd_command = build_shell_cd_command(cwd);
 
@@ -1319,7 +1319,7 @@ fn launch_windows_terminal(
     let preferred = crate::settings::get_preferred_terminal();
     let terminal = preferred.as_deref().unwrap_or("cmd");
 
-    let bat_file = temp_dir.join(format!("cc_switch_claude_{}.bat", std::process::id()));
+    let bat_file = temp_dir.join(format!("fhswitch_claude_{}.bat", std::process::id()));
     let config_path_for_batch = escape_windows_batch_value(&config_file.to_string_lossy());
     let cwd_command = build_windows_cwd_command(cwd);
 
@@ -1454,15 +1454,15 @@ pub(crate) fn launch_terminal_running(command_line: &str, label: &str) -> Result
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     let (script_file, script_content) = {
-        let file = temp_dir.join(format!("cc_switch_{}_{}.sh", label, pid));
+        let file = temp_dir.join(format!("fhswitch_{}_{}.sh", label, pid));
         let content = format!(
             r#"#!/bin/bash
 trap 'rm -f "{script_path}"' EXIT
-echo "[cc-switch] Starting: {cmd}"
+echo "[fhswitch] Starting: {cmd}"
 echo ""
 {cmd}
 echo ""
-echo "[cc-switch] Command exited. Press any key to close."
+echo "[fhswitch] Command exited. Press any key to close."
 read -n 1 -s
 "#,
             script_path = file.display(),
@@ -1579,9 +1579,9 @@ read -n 1 -s
         let preferred = crate::settings::get_preferred_terminal();
         let terminal = preferred.as_deref().unwrap_or("cmd");
 
-        let bat_file = temp_dir.join(format!("cc_switch_{}_{}.bat", label, pid));
+        let bat_file = temp_dir.join(format!("fhswitch_{}_{}.bat", label, pid));
         let content = format!(
-            "@echo off\r\necho [cc-switch] Starting: {cmd}\r\necho.\r\n{cmd}\r\necho.\r\necho [cc-switch] Command exited. Press any key to close.\r\npause >nul\r\ndel \"%~f0\" >nul 2>&1\r\n",
+            "@echo off\r\necho [fhswitch] Starting: {cmd}\r\necho.\r\n{cmd}\r\necho.\r\necho [fhswitch] Command exited. Press any key to close.\r\npause >nul\r\ndel \"%~f0\" >nul 2>&1\r\n",
             cmd = command_line,
         );
         std::fs::write(&bat_file, &content).map_err(|e| format!("写入批处理文件失败: {e}"))?;
@@ -1805,7 +1805,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock should be after epoch")
             .as_nanos();
-        let missing = std::env::temp_dir().join(format!("cc-switch-missing-{unique}"));
+        let missing = std::env::temp_dir().join(format!("fhswitch-missing-{unique}"));
 
         let error = resolve_launch_cwd(Some(missing.to_string_lossy().into_owned()))
             .expect_err("missing directory should fail");
@@ -1823,7 +1823,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn iterm2_applescript_cold_start_avoids_current_window_before_one_exists() {
-        let script = build_macos_iterm2_applescript(Path::new("/tmp/cc_switch_launcher.sh"));
+        let script = build_macos_iterm2_applescript(Path::new("/tmp/fhswitch_launcher.sh"));
 
         let cold_start_branch = script
             .split("else\n        activate")
@@ -1842,7 +1842,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn iterm2_applescript_keeps_new_tab_behavior_for_existing_windows() {
-        let script = build_macos_iterm2_applescript(Path::new("/tmp/cc_switch_launcher.sh"));
+        let script = build_macos_iterm2_applescript(Path::new("/tmp/fhswitch_launcher.sh"));
 
         let running_branch = script
             .split("if was_running then")

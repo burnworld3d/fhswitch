@@ -116,11 +116,11 @@ Add an official provider from the preset list. After switching to it, run the Lo
 <details>
 <summary><strong>Where is my data stored?</strong></summary>
 
-- **Database**: `~/.fh-switch/fh-switch.db` (SQLite — providers, MCP, prompts, skills)
-- **Local settings**: `~/.fh-switch/settings.json` (device-level UI preferences)
-- **Backups**: `~/.fh-switch/backups/` (auto-rotated, keeps 10 most recent)
-- **Skills**: `~/.fh-switch/skills/` (symlinked to corresponding apps by default)
-- **Skill Backups**: `~/.fh-switch/skill-backups/` (created automatically before uninstall, keeps 20 most recent)
+- **Database**: `~/.fhswitch/fhswitch.db` (SQLite — providers, MCP, prompts, skills)
+- **Local settings**: `~/.fhswitch/settings.json` (device-level UI preferences)
+- **Backups**: `~/.fhswitch/backups/` (auto-rotated, keeps 10 most recent)
+- **Skills**: `~/.fhswitch/skills/` (symlinked to corresponding apps by default)
+- **Skill Backups**: `~/.fhswitch/skill-backups/` (created automatically before uninstall, keeps 20 most recent)
 
 </details>
 
@@ -158,25 +158,25 @@ For detailed guides on every feature, check out the **[User Manual](docs/user-ma
 
 ### Windows Users
 
-Download the latest `FH-Switch-v{version}-Windows.msi` installer or `FH-Switch-v{version}-Windows-Portable.zip` portable version from the [Releases](../../releases) page.
+Download the latest `FHSwitch-v{version}-Windows.msi` installer or `FHSwitch-v{version}-Windows-Portable.zip` portable version from the [Releases](../../releases) page.
 
 ### macOS Users
 
 **Method 1: Install via Homebrew (Recommended)**
 
 ```bash
-brew install --cask fh-switch
+brew install --cask fhswitch
 ```
 
 Update:
 
 ```bash
-brew upgrade --cask fh-switch
+brew upgrade --cask fhswitch
 ```
 
 **Method 2: Manual Download**
 
-Download `FH-Switch-v{version}-macOS.dmg` (recommended) or `.zip` from the [Releases](../../releases) page.
+Download `FHSwitch-v{version}-macOS.dmg` (recommended) or `.zip` from the [Releases](../../releases) page.
 
 > **Note**: FH Switch for macOS is code-signed and notarized by Apple. You can install and open it directly.
 
@@ -185,16 +185,16 @@ Download `FH-Switch-v{version}-macOS.dmg` (recommended) or `.zip` from the [Rele
 **Install via paru (Recommended)**
 
 ```bash
-paru -S fh-switch-bin
+paru -S fhswitch-bin
 ```
 
 ### Linux Users
 
 Download the latest Linux build from the [Releases](../../releases) page:
 
-- `FH-Switch-v{version}-Linux.deb` (Debian/Ubuntu)
-- `FH-Switch-v{version}-Linux.rpm` (Fedora/RHEL/openSUSE)
-- `FH-Switch-v{version}-Linux.AppImage` (Universal)
+- `FHSwitch-v{version}-Linux.deb` (Debian/Ubuntu)
+- `FHSwitch-v{version}-Linux.rpm` (Fedora/RHEL/openSUSE)
+- `FHSwitch-v{version}-Linux.AppImage` (Universal)
 
 > **Flatpak**: Not included in official releases. You can build it yourself from the `.deb` — see [`flatpak/README.md`](flatpak/README.md) for instructions.
 
@@ -223,7 +223,7 @@ Download the latest Linux build from the [Releases](../../releases) page:
 
 **Core Design Patterns**
 
-- **SSOT** (Single Source of Truth): All data stored in `~/.fh-switch/fh-switch.db` (SQLite)
+- **SSOT** (Single Source of Truth): All data stored in `~/.fhswitch/fhswitch.db` (SQLite)
 - **Dual-layer Storage**: SQLite for syncable data, JSON for device-level settings
 - **Dual-way Sync**: Write to live files on switch, backfill from live when editing active provider
 - **Atomic Writes**: Temp file + rename pattern prevents config corruption
@@ -377,4 +377,4 @@ pnpm test:unit --coverage
 
 ## License
 
-MIT © Jason Young
+MIT License. See [LICENSE](./LICENSE).

@@ -11,7 +11,7 @@ use std::fs;
 use std::path::Path;
 use toml_edit::DocumentMut;
 
-pub const CC_SWITCH_CODEX_MODEL_PROVIDER_ID: &str = "ccswitch";
+pub const FHSWITCH_CODEX_MODEL_PROVIDER_ID: &str = "fhswitch";
 
 /// Reserved built-in provider IDs from OpenAI Codex's config/model-provider
 /// catalog. Keep in sync with Codex `RESERVED_MODEL_PROVIDER_IDS` and legacy
@@ -233,7 +233,7 @@ fn normalize_codex_live_config_model_provider_with_anchors<'a>(
             is_custom_codex_model_provider_id(&source_provider_id)
                 .then(|| source_provider_id.clone())
         })
-        .unwrap_or_else(|| CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string());
+        .unwrap_or_else(|| FHSWITCH_CODEX_MODEL_PROVIDER_ID.to_string());
 
     if stable_provider_id == source_provider_id {
         return Ok(config_text.to_string());
@@ -286,7 +286,7 @@ fn rewrite_codex_profile_model_provider_refs(
     }
 }
 
-/// Keep Codex's active `model_provider` stable across CC Switch provider changes.
+/// Keep Codex's active `model_provider` stable across FH Switch provider changes.
 ///
 /// Codex stores and filters resume history by `model_provider`, so switching between
 /// provider-specific ids like `rightcode` and `aihubmix` makes history appear to move.
