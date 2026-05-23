@@ -297,7 +297,7 @@ jobs:
           # 仅打包 MSI 安装器 + .sig（用于 Updater）
           $msi = Get-ChildItem -Path 'src-tauri/target/release/bundle/msi' -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($null -eq $msi) {
-            # 兜底：全局搜索 .msi
+            # Fallback: search all bundle output for an MSI.
             $msi = Get-ChildItem -Path 'src-tauri/target/release/bundle' -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
           }
           if ($null -ne $msi) {
@@ -314,7 +314,7 @@ jobs:
           } else {
             Write-Warning 'No Windows MSI installer found'
           }
-          # 绿色版（portable）：仅可执行文件打 zip（不参与 Updater）
+          # Portable build: zip only the executable and portable marker. This is not used by the updater.
           $exeCandidates = @(
             'src-tauri/target/release/fhswitch.exe',
             'src-tauri/target/x86_64-pc-windows-msvc/release/fhswitch.exe'
@@ -346,7 +346,7 @@ jobs:
           mkdir -p release-assets
           VERSION="${GITHUB_REF_NAME}"  # e.g., v3.5.0
           ARCH="${{ matrix.arch || 'x86_64' }}"
-          # Updater artifact: AppImage（含对应 .sig）
+          # Updater artifact: AppImage and matching .sig file.
           APPIMAGE=$(find src-tauri/target/release/bundle -name "*.AppImage" | head -1 || true)
           if [ -n "$APPIMAGE" ]; then
             NEW_APPIMAGE="FHSwitch-${VERSION}-Linux-${ARCH}.AppImage"
@@ -356,7 +356,7 @@ jobs:
           else
             echo "No AppImage found under target/release/bundle" >&2
           fi
-          # 额外上传 .deb（用于手动安装，不参与 Updater）
+          # Optional .deb package for manual installation. This is not used by the updater.
           DEB=$(find src-tauri/target/release/bundle -name "*.deb" | head -1 || true)
           if [ -n "$DEB" ]; then
             cp "$DEB" "release-assets/FHSwitch-${VERSION}-Linux-${ARCH}.deb"
@@ -364,7 +364,7 @@ jobs:
           else
             echo "No .deb found (optional)"
           fi
-          # 额外上传 .rpm（用于 Fedora/RHEL/openSUSE 等，不参与 Updater）
+          # Optional .rpm package for Fedora, RHEL, openSUSE, and similar systems. This is not used by the updater.
           RPM=$(find src-tauri/target/release/bundle -name "*.rpm" | head -1 || true)
           if [ -n "$RPM" ]; then
             cp "$RPM" "release-assets/FHSwitch-${VERSION}-Linux-${ARCH}.rpm"
@@ -428,18 +428,18 @@ jobs:
           body: |
             ## FH Switch ${{ github.ref_name }}
 
-            🔗 **Repository / 代码仓库 / リポジトリ**: [github.com/burnworld3d/fhswitch](https://github.com/burnworld3d/fhswitch)
+            **Repository**: [github.com/burnworld3d/fhswitch](https://github.com/burnworld3d/fhswitch)
 
-            Claude Code 供应商切换工具
+            FH Switch is an all-in-one manager for Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, and Hermes Agent.
 
-            ### 下载
+            ### Downloads
 
-            - **macOS**: `FHSwitch-${{ github.ref_name }}-macOS.dmg`（推荐）或 `FHSwitch-${{ github.ref_name }}-macOS.zip`（解压即用）
-            - **Windows**: `FHSwitch-${{ github.ref_name }}-Windows.msi`（安装版）或 `FHSwitch-${{ github.ref_name }}-Windows-Portable.zip`（绿色版）
+            - **macOS**: `FHSwitch-${{ github.ref_name }}-macOS.dmg` (recommended) or `FHSwitch-${{ github.ref_name }}-macOS.zip` (portable app bundle)
+            - **Windows**: `FHSwitch-${{ github.ref_name }}-Windows.msi` (installer) or `FHSwitch-${{ github.ref_name }}-Windows-Portable.zip` (portable build)
             - **Linux (x86_64)**: `FHSwitch-${{ github.ref_name }}-Linux-x86_64.AppImage` / `.deb` / `.rpm`
             - **Linux (ARM64)**: `FHSwitch-${{ github.ref_name }}-Linux-arm64.AppImage` / `.deb` / `.rpm`
 
-            > `.tar.gz` 为 Tauri updater 自动更新专用，无需手动下载。
+            The `.tar.gz` file is used by the Tauri updater and does not need to be downloaded manually.
 
             ---
             macOS builds are ad-hoc signed and not Apple-notarized because this project does not use an Apple Developer account. If macOS blocks the app on first launch, open it from Finder with right-click > Open.
