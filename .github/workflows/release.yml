@@ -105,6 +105,7 @@ jobs:
           fi
           
           RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
+          RAW=$(RAW="$RAW" node -e "process.stdout.write((process.env.RAW || '').replace(/^\uFEFF/, '').replace(/\r/g, ''))")
           # 目标：提供正确的私钥“文件路径”给 Tauri CLI，避免内容解码歧义
           KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
           # 情况 1：原始两行文本（第一行以 "untrusted comment:" 开头）
