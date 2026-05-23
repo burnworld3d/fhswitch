@@ -424,7 +424,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: FH Switch ${{ github.ref_name }}
-          prerelease: true
+          prerelease: false
           body: |
             ## FH Switch ${{ github.ref_name }}
 
