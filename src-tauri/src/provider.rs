@@ -605,13 +605,13 @@ impl UniversalProvider {
 
         // 生成 Codex 的 config.toml 内容
         let config_toml = format!(
-            r#"model_provider = "newapi"
+            r#"model_provider = "fhswitch"
 model = "{model}"
 model_reasoning_effort = "{reasoning_effort}"
 disable_response_storage = true
 
-[model_providers.newapi]
-name = "NewAPI"
+[model_providers.fhswitch]
+name = "FH Switch"
 base_url = "{codex_base_url}"
 wire_api = "responses"
 requires_openai_auth = true"#
@@ -982,6 +982,9 @@ mod tests {
             .and_then(|item| item.as_str())
             .expect("config toml");
 
+        assert!(config.contains("model_provider = \"fhswitch\""));
+        assert!(config.contains("[model_providers.fhswitch]"));
+        assert!(config.contains("name = \"FH Switch\""));
         assert!(config.contains("base_url = \"https://api.example.com/v1\""));
         assert_eq!(
             provider

@@ -119,13 +119,13 @@ export function UniversalProviderFormModal({
     const codexBaseUrl = baseUrl.endsWith("/v1")
       ? baseUrl
       : `${baseUrl.replace(/\/+$/, "")}/v1`;
-    const configToml = `model_provider = "newapi"
+    const configToml = `model_provider = "fhswitch"
 model = "${model}"
 model_reasoning_effort = "${reasoningEffort}"
 disable_response_storage = true
 
-[model_providers.newapi]
-name = "NewAPI"
+[model_providers.fhswitch]
+name = "FH Switch"
 base_url = "${codexBaseUrl}"
 wire_api = "responses"
 requires_openai_auth = true`;

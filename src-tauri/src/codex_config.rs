@@ -13,6 +13,8 @@ use toml_edit::DocumentMut;
 
 pub const FHSWITCH_CODEX_MODEL_PROVIDER_ID: &str = "fhswitch";
 
+const CODEX_LEGACY_FHSWITCH_MODEL_PROVIDER_IDS: &[&str] = &["newapi"];
+
 /// Reserved built-in provider IDs from OpenAI Codex's config/model-provider
 /// catalog. Keep in sync with Codex `RESERVED_MODEL_PROVIDER_IDS` and legacy
 /// removed provider aliases.
@@ -165,6 +167,9 @@ fn is_custom_codex_model_provider_id(id: &str) -> bool {
         && !CODEX_RESERVED_MODEL_PROVIDER_IDS
             .iter()
             .any(|reserved| reserved.eq_ignore_ascii_case(id))
+        && !CODEX_LEGACY_FHSWITCH_MODEL_PROVIDER_IDS
+            .iter()
+            .any(|legacy| legacy.eq_ignore_ascii_case(id))
 }
 
 fn stable_codex_model_provider_id_from_config(config_text: &str) -> Option<String> {
@@ -582,6 +587,52 @@ command = "npx"
         assert!(
             parsed.get("mcp_servers").is_some(),
             "unrelated config should be preserved"
+        );
+    }
+
+    #[test]
+    fn normalize_live_config_migrates_legacy_newapi_to_fhswitch() {
+        let current = r#"model_provider = "newapi"
+
+[model_providers.newapi]
+name = "NewAPI"
+base_url = "https://old.example/v1"
+wire_api = "responses"
+"#;
+        let target = r#"model_provider = "fhswitch"
+
+[model_providers.fhswitch]
+name = "FH Switch"
+base_url = "https://new.example/v1"
+wire_api = "responses"
+"#;
+
+        let result =
+            normalize_codex_live_config_model_provider_with_anchors(target, Some(current)).unwrap();
+        let parsed: toml::Value = toml::from_str(&result).unwrap();
+
+        assert_eq!(
+            parsed.get("model_provider").and_then(|v| v.as_str()),
+            Some("fhswitch")
+        );
+        assert!(
+            parsed
+                .get("model_providers")
+                .and_then(|v| v.get("newapi"))
+                .is_none(),
+            "legacy newapi provider id should not remain in live config"
+        );
+        let provider = parsed
+            .get("model_providers")
+            .and_then(|v| v.get("fhswitch"))
+            .expect("fhswitch provider table should exist");
+        assert_eq!(
+            provider.get("name").and_then(|v| v.as_str()),
+            Some("FH Switch")
+        );
+        assert_eq!(
+            provider.get("base_url").and_then(|v| v.as_str()),
+            Some("https://new.example/v1")
         );
     }
 
